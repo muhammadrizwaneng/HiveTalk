@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Local file for prisma generate / migrate; runtime uses Turso via driver adapter.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ChannelType {
+  CHANNEL
+  DM
+}
+
+enum Department {
+  GENERAL
+  ENGINEERING
+  HR
+  SOCIAL
+}
+
+enum MessageKind {
+  NORMAL
+  ANNOUNCEMENT
+  PTO_REQUEST
+  BUG_REPORT
+  CODE_SNIPPET
+  CAMPAIGN_DRAFT
+  CONTENT_APPROVAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  statusText   String   @default("")
+  statusEmoji  String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships         Membership[]
+  messages            Message[]
+  ownedWorkspaces     Workspace[]          @relation("WorkspaceOwner")
+  channelParticipants ChannelParticipant[]
+  reactions           Reaction[]
+  readStates          ChannelReadState[]
+  attachments         Attachment[]
+  pinnedMessages      PinnedMessage[]
+  starredChannels     StarredChannel[]
+  drafts              MessageDraft[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  /// URL slug, e.g. "seebiz" → /w/seebiz (shown as hivetalk.seebiz)
+  slug      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner       User         @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  channels    Channel[]
+}
+
+model Membership {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        Role     @default(MEMBER)
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Channel {
+  id          String      @id @default(cuid())
+  workspaceId String
+  name        String
+  topic       String      @default("")
+  type        ChannelType @default(CHANNEL)
+  isPrivate   Boolean     @default(false)
+  department  Department  @default(GENERAL)
+  /// Sorted "userIdA:userIdB" pair key for DM uniqueness within a workspace
+  dmPairKey   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  participants ChannelParticipant[]
+  readStates   ChannelReadState[]
+  pins         PinnedMessage[]
+  stars        StarredChannel[]
+  drafts       MessageDraft[]
+
+  @@unique([workspaceId, name])
+  @@unique([workspaceId, dmPairKey])
+  @@index([workspaceId, type])
+  @@index([workspaceId, department])
+}
+
+model ChannelParticipant {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model ChannelReadState {
+  id         String   @id @default(cuid())
+  userId     String
+  channelId  String
+  lastReadAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([channelId])
+}
+
+model StarredChannel {
+  id        String   @id @default(cuid())
+  userId    String
+  channelId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([userId])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  channelId String
+  authorId  String
+  content   String
+  kind      MessageKind @default(NORMAL)
+  parentId  String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  channel     Channel         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent      Message?        @relation("MessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Message[]       @relation("MessageReplies")
+  reactions   Reaction[]
+  attachments Attachment[]
+  pins        PinnedMessage[]
+
+  @@index([channelId, createdAt])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([kind])
+}
+
+model MessageDraft {
+  id        String   @id @default(cuid())
+  userId    String
+  channelId String
+  content   String   @default("")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([userId])
+}
+
+model PinnedMessage {
+  id        String   @id @default(cuid())
+  channelId String
+  messageId String
+  pinnedById String
+  createdAt DateTime @default(now())
+
+  channel  Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedBy User    @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, messageId])
+  @@index([channelId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  messageId  String?
+  uploaderId String
+  filename   String
+  mimeType   String
+  size       Int
+  storageKey String
+  createdAt  DateTime @default(now())
+
+  message  Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploader User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([uploaderId])
+}

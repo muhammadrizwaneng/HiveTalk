@@ -1,0 +1,32 @@
+# HiveTalk API + Socket.IO (WebSockets — cannot run on Vercel)
+# Deploy: push this repo to GitHub → https://dashboard.render.com → New → Blueprint
+services:
+  - type: web
+    name: hivetalk-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm run build -w @hivetalk/shared && npm run db:generate && npm run build -w @hivetalk/server
+    startCommand: npm run start -w @hivetalk/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: DATABASE_URL
+        value: file:./apps/server/prisma/dev.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: none

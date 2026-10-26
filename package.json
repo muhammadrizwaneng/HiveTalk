@@ -1,0 +1,32 @@
+{
+  "name": "hivetalk",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @hivetalk/shared && concurrently -n shared,server,web -c blue,green,magenta \"npm run dev -w @hivetalk/shared\" \"npm run dev -w @hivetalk/server\" \"npm run dev -w @hivetalk/web\"",
+    "build": "npm run build -w @hivetalk/shared && npm run build -w @hivetalk/server && npm run build -w @hivetalk/web",
+    "lint": "npm run lint -w @hivetalk/shared && npm run lint -w @hivetalk/server && npm run lint -w @hivetalk/web",
+    "db:generate": "npm run db:generate -w @hivetalk/server",
+    "db:migrate": "npm run db:migrate -w @hivetalk/server",
+    "db:push": "npm run db:push -w @hivetalk/server",
+    "db:push:turso": "node apps/server/scripts/push-turso-schema.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@11.19.0",
+  "allowScripts": {
+    "@prisma/engines": true,
+    "prisma@6.19.3": true,
+    "@prisma/client": true,
+    "unrs-resolver": true
+  }
+}
