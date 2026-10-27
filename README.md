@@ -65,16 +65,20 @@ Vercel cannot host long-lived WebSockets. Use Render Blueprint (`render.yaml`):
    - `COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`
    - `JWT_SECRET` (32+ chars)
 
-### 3. Web on Vercel
+### 3. Web on Vercel (monorepo picker)
 
-1. Import the GitHub repo in Vercel
-2. **Root Directory:** `apps/web`
-3. Framework: Next.js (uses `apps/web/vercel.json`)
+If Vercel shows **two** directories (`apps/web` + `apps/server`):
+
+1. Deploy **only `apps/web`**
+2. **Skip / dismiss `apps/server`** on Vercel (deploy that on Render instead — see `DEPLOY.md`)
+3. Root Directory: `apps/web`
 4. Env vars:
    - `NEXT_PUBLIC_API_URL` = `https://<your-render-service>.onrender.com`
    - `NEXT_PUBLIC_WS_URL` = same as API URL
 
 After both are live, set Render `CLIENT_ORIGIN` to the Vercel URL and redeploy the API.
+
+Full checklist: [`DEPLOY.md`](./DEPLOY.md)
 
 ## Security defaults
 
