@@ -1,62 +1,64 @@
 # HiveTalk deploy (monorepo)
 
-Your repo has **two** apps. They are **not** both meant for Vercel.
-
 | App | Platform | Why |
 |-----|----------|-----|
-| `apps/web` | **Vercel** | Next.js — perfect fit |
-| `apps/server` | **Render** (or Railway/Fly) | Express + **Socket.IO** need a real Node process. Vercel serverless cannot keep WebSocket chat alive. |
+| `apps/web` | **Vercel** | Next.js |
+| `apps/server` | **Fly.io** | Express + Socket.IO (long-running Node) |
 
-Turso is the shared database for the API (not for the Next.js app).
-
----
-
-## Vercel modal (“Detected 2 deployable directories”)
-
-1. Open **`apps/web`** → continue / deploy that one.
-2. For **`apps/server`**: **Dismiss** / skip — do **not** import it as a Vercel project.
-3. In the web project settings:
-   - **Root Directory:** `apps/web`
-   - Install / build are already in `apps/web/vercel.json`
-4. Env vars on the **web** project:
-
-```text
-NEXT_PUBLIC_API_URL=https://YOUR-API.onrender.com
-NEXT_PUBLIC_WS_URL=https://YOUR-API.onrender.com
-```
+Do **not** put the API on Vercel — sockets won’t work there.
 
 ---
 
-## API on Render (required for live chat)
-
-1. [Render](https://dashboard.render.com) → **New** → **Blueprint** → this GitHub repo (`render.yaml`).
-2. Set env:
-
-```text
-TURSO_DATABASE_URL=libsql://hivetalk-rizwansar.aws-ap-south-1.turso.io
-TURSO_AUTH_TOKEN=<from turso db tokens create hivetalk>
-CLIENT_ORIGIN=https://YOUR-APP.vercel.app
-COOKIE_SECURE=true
-COOKIE_SAME_SITE=none
-JWT_SECRET=<32+ random chars>
-DATABASE_URL=file:./prisma/dev.db
-NODE_ENV=production
-```
-
-3. After both URLs exist:
-   - Put Render URL into Vercel `NEXT_PUBLIC_*` vars
-   - Put Vercel URL into Render `CLIENT_ORIGIN`
-   - Redeploy both
-
-4. Push schema to Turso (once):
+## 1. API on Fly.io
 
 ```bash
-# local, with TURSO_* in .env
+# Install CLI: https://fly.io/docs/flyctl/install/
+fly auth login
+cd /path/to/HiveTalk   # repo root (has fly.toml + Dockerfile)
+
+# First time — pick a unique app name if hivetalk-api is taken
+fly launch --no-deploy   # or: fly apps create hivetalk-api
+
+fly secrets set \
+  TURSO_DATABASE_URL="libsql://hivetalk-rizwansar.aws-ap-south-1.turso.io" \
+  TURSO_AUTH_TOKEN="YOUR_TURSO_TOKEN" \
+  JWT_SECRET="at-least-32-characters-long-secret!!" \
+  CLIENT_ORIGIN="https://YOUR-APP.vercel.app"
+
+fly deploy
+```
+
+App URL will look like: `https://hivetalk-api.fly.dev`  
+Health check: `https://hivetalk-api.fly.dev/health`
+
+Push DB schema once (local, with Turso token in `.env`):
+
+```bash
 npm run db:push:turso
+```
+
+Free allowance is limited; machines can auto-stop when idle (`min_machines_running = 0` in `fly.toml`) — first request after sleep may be slow.
+
+---
+
+## 2. Web on Vercel
+
+1. Import GitHub repo → deploy **only `apps/web`** (skip `apps/server`).
+2. Env vars:
+
+```text
+NEXT_PUBLIC_API_URL=https://hivetalk-api.fly.dev
+NEXT_PUBLIC_WS_URL=https://hivetalk-api.fly.dev
+```
+
+3. After Vercel URL exists, update Fly:
+
+```bash
+fly secrets set CLIENT_ORIGIN="https://YOUR-APP.vercel.app"
 ```
 
 ---
 
 ## Why not both on Vercel?
 
-Selecting both directories in the monorepo UI only creates **two Vercel projects**. The Express + Socket.IO server will deploy as serverless and **realtime messaging will fail**. Use Render for `apps/server`.
+Socket.IO needs a real Node process. Fly runs that; Vercel serverless does not.

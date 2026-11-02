@@ -16,10 +16,11 @@ import { loginUser, registerUser } from "../services/authService.js";
 export const authRouter = Router();
 
 function cookieOptions() {
-  const secure = env.COOKIE_SECURE || env.NODE_ENV === "production";
+  // Only set Secure when explicitly enabled (needs HTTPS).
+  // Do NOT force Secure just because NODE_ENV=production — HTTP IP deploys would break login cookies.
   return {
     httpOnly: true,
-    secure,
+    secure: env.COOKIE_SECURE,
     sameSite: env.COOKIE_SAME_SITE,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",

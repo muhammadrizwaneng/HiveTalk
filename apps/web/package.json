@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "next dev --webpack --port 3000",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint ."
   },
   "dependencies": {
-    "@next/swc-darwin-arm64": "^16.4.2",
     "@hivetalk/shared": "*",
     "next": "16.4.2",
     "react": "19.3.0",

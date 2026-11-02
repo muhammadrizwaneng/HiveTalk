@@ -6,7 +6,7 @@ Original real-time team messaging app (monorepo).
 
 ```
 apps/web          Next.js App Router UI  → deploy on Vercel
-apps/server       Express + Socket.IO + Prisma API  → deploy on Render (WebSockets)
+apps/server       Express + Socket.IO + Prisma API  → deploy on Fly.io (WebSockets)
 packages/shared   Shared Zod schemas, types, constants
 ```
 
@@ -53,30 +53,21 @@ npm run dev
    - `TURSO_AUTH_TOKEN=...`
 4. Push schema: `npm run db:push:turso`
 
-### 2. API on Render (required for Socket.IO)
+### 2. API on Fly.io (required for Socket.IO)
 
-Vercel cannot host long-lived WebSockets. Use Render Blueprint (`render.yaml`):
+See [`DEPLOY.md`](./DEPLOY.md) — `fly.toml` + `Dockerfile` are in the repo root.
 
-1. Push repo to GitHub
-2. Render → New → Blueprint → select repo
-3. Set env vars:
-   - `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
-   - `CLIENT_ORIGIN` = your Vercel URL (e.g. `https://hivetalk.vercel.app`)
-   - `COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`
-   - `JWT_SECRET` (32+ chars)
+```bash
+fly auth login
+fly secrets set TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... JWT_SECRET=... CLIENT_ORIGIN=https://YOUR.vercel.app
+fly deploy
+```
 
 ### 3. Web on Vercel (monorepo picker)
 
-If Vercel shows **two** directories (`apps/web` + `apps/server`):
-
-1. Deploy **only `apps/web`**
-2. **Skip / dismiss `apps/server`** on Vercel (deploy that on Render instead — see `DEPLOY.md`)
-3. Root Directory: `apps/web`
-4. Env vars:
-   - `NEXT_PUBLIC_API_URL` = `https://<your-render-service>.onrender.com`
-   - `NEXT_PUBLIC_WS_URL` = same as API URL
-
-After both are live, set Render `CLIENT_ORIGIN` to the Vercel URL and redeploy the API.
+1. Deploy **only `apps/web`** (skip `apps/server` on Vercel)
+2. Env: `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_WS_URL` = `https://hivetalk-api.fly.dev`
+3. Set Fly `CLIENT_ORIGIN` to your Vercel URL
 
 Full checklist: [`DEPLOY.md`](./DEPLOY.md)
 

@@ -58,6 +58,7 @@ export function ChatApp({
   const [channelPrivate, setChannelPrivate] = useState(false);
   const [channelDept, setChannelDept] = useState<Department>("GENERAL");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteHint, setInviteHint] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [showActivity, setShowActivity] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -538,7 +539,8 @@ export function ChatApp({
 
   async function inviteMember(e: React.FormEvent) {
     e.preventDefault();
-    if (!activeWorkspaceId || !inviteEmail.trim()) return;
+    if (!activeWorkspaceId || !inviteEmail.trim() || !activeWorkspace) return;
+    setInviteHint(null);
     try {
       const { member } = await api.addMember(
         activeWorkspaceId,
@@ -550,6 +552,18 @@ export function ChatApp({
           ? prev
           : [...prev, member],
       );
+      const link = `${window.location.origin}/w/${activeWorkspace.slug}`;
+      setInviteHint(
+        `Added ${member.user.displayName}. No email is sent — share this link: ${link}`,
+      );
+      try {
+        await navigator.clipboard.writeText(link);
+        setInviteHint(
+          `Added ${member.user.displayName}. Invite link copied — they should open it (or refresh /w).`,
+        );
+      } catch {
+        // clipboard may be blocked on http
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add member");
     }
@@ -1288,12 +1302,30 @@ export function ChatApp({
               type="email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="Invite email"
+              placeholder="Invite email (must register first)"
               className="rounded bg-[#5c2c5d] px-2 py-1 text-xs text-white"
             />
             <button type="submit" className="text-left text-xs text-white">
               Add member
             </button>
+            {inviteHint && (
+              <p className="text-[10px] leading-snug text-[#ecb22e]">{inviteHint}</p>
+            )}
+            {activeWorkspace && (
+              <button
+                type="button"
+                className="text-left text-[10px] text-[#1d9bd1] underline"
+                onClick={() => {
+                  const link = `${window.location.origin}/w/${activeWorkspace.slug}`;
+                  void navigator.clipboard.writeText(link).then(
+                    () => setInviteHint(`Link copied: ${link}`),
+                    () => setInviteHint(link),
+                  );
+                }}
+              >
+                Copy workspace link
+              </button>
+            )}
           </form>
         </div>
 

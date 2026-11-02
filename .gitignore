@@ -11,5 +11,7 @@ uploads
 coverage
 .DS_Store
 *.tsbuildinfo
+*.pem
+hivetalk.pem
 apps/server/prisma/*.db
 apps/server/prisma/*.db-journal

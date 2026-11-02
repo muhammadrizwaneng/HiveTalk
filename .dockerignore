@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/uploads
+**/*.db
+**/*.db-journal
+.git
+.env
+.env.*
+apps/web/.env.local
+npm-debug.log*
+.DS_Store
+*.md
+!DEPLOY.md

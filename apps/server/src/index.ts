@@ -10,8 +10,9 @@ async function main() {
   const io = createSocketServer(server);
   app.set("io", io);
 
-  server.listen(env.PORT, () => {
-    console.log(`HiveTalk server listening on http://localhost:${env.PORT}`);
+  // Bind all interfaces so EC2 public IP can reach the API (not only localhost).
+  server.listen(env.PORT, "0.0.0.0", () => {
+    console.log(`HiveTalk server listening on http://0.0.0.0:${env.PORT}`);
   });
 
   const shutdown = async () => {
